@@ -5,7 +5,7 @@
 
     <groupId>com.lucas</groupId>
     <artifactId>utils</artifactId>
-    <version>0.2.0</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
     <name>utils</name>
     <description>Tiny collection of utils</description>

@@ -17,27 +17,11 @@ public final class Utils {
     }
 
     /**
-     * Sleeps for the specified number of milliseconds.
-     * If interrupted, invokes {@code onInterrupt} with the {@link InterruptedException}
-     *
-     * @param millis      millis
-     * @param onInterrupt on interrupt callback
-     */
-    public static void sleep(long millis, @Nonnull Consumer<? super InterruptedException> onInterrupt) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            onInterrupt.accept(e);
-            Thread.currentThread().interrupt();
-        }
-    }
-
-    /**
      * Returns the value from {@code getter} if non-null;
      * otherwise obtains a new value from {@code supplier}, sets it using {@code setter}, and returns it.
      *
      * @param getter   getter
-     * @param setter   setter
+     * @param setter   setter1
      * @param supplier supplier
      * @param <T>      value type
      * @return existing value from getter if non-null; otherwise the value produced by supplier
