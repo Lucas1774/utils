@@ -21,7 +21,7 @@ public final class Utils {
      * otherwise obtains a new value from {@code supplier}, sets it using {@code setter}, and returns it.
      *
      * @param getter   getter
-     * @param setter   setter1
+     * @param setter   setter
      * @param supplier supplier
      * @param <T>      value type
      * @return existing value from getter if non-null; otherwise the value produced by supplier
