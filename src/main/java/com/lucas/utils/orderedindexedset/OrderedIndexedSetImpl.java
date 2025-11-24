@@ -1,58 +1,59 @@
-package com.lucas.utils;
+package com.lucas.utils.orderedindexedset;
 
 import jakarta.annotation.Nonnull;
 
 import java.util.*;
-import java.util.stream.Collector;
 
-/**
- * Features:
- * <ul>
- *   <li>Preserves insertion order.</li>
- *   <li>Deduplicates elements (Set semantics).</li>
- *   <li>Implements <code>Set</code> with standard Set <code>equals</code> and <code>hashCode</code> semantics (order-insensitive).</li>
- * </ul>
- * Notes:
- * <ul>
- *   <li>Not thread-safe.</li>
- *   <li>Intended for moderate-sized collections where simplicity and correctness are preferred over ultimate removal performance.</li>
- * </ul>
- */
-@SuppressWarnings("unused")
-public final class OrderedIndexedSet<E> implements Set<E> {
+public final class OrderedIndexedSetImpl<E> implements OrderedIndexedSet<E> {
 
     private final List<E> list;
     private final Map<E, Integer> map;
     private int modCount = 0;
 
-    public OrderedIndexedSet() {
+    public OrderedIndexedSetImpl() {
         list = new ArrayList<>();
         map = new HashMap<>();
     }
 
 
-    public OrderedIndexedSet(Collection<? extends E> c) {
+    public OrderedIndexedSetImpl(Collection<? extends E> c) {
         this();
         addAll(c);
     }
 
-    @SafeVarargs
-    public static <E> OrderedIndexedSet<E> of(E... input) {
-        for (Object o : input) {
-            Objects.requireNonNull(o);
-        }
-        return new OrderedIndexedSet<>(Arrays.asList(input));
+    @Override
+    public E get(int index) {
+        return list.get(index);
     }
 
-    public static <T> Collector<T, OrderedIndexedSet<T>, OrderedIndexedSet<T>> toOrderedIndexedSet() {
-        return Collector.of(
-                OrderedIndexedSet::new,
-                OrderedIndexedSet::add,
-                (left, right) -> {
-                    left.addAll(right);
-                    return left;
-                }
-        );
+    @Override
+    public E remove(int index) {
+        E removed = list.remove(index);
+        map.remove(removed);
+        for (int i = index; i < list.size(); i++) {
+            E elem = list.get(i);
+            map.put(elem, i);
+        }
+        modCount++;
+        return removed;
+    }
+
+    @SuppressWarnings("SuspiciousMethodCalls")
+    public int indexOf(Object o) {
+        Integer idx = map.get(o);
+        return null == idx ? -1 : idx;
+    }
+
+    @Nonnull
+    @Override
+    public OrderedIndexedSet<E> subList(int fromIndex, int toIndex) {
+        if (0 > fromIndex || toIndex > size() || fromIndex > toIndex)
+            throw new IndexOutOfBoundsException("fromIndex=" + fromIndex + " toIndex=" + toIndex + " size=" + size());
+        OrderedIndexedSet<E> result = new OrderedIndexedSetImpl<>();
+        for (int i = fromIndex; i < toIndex; i++) {
+            result.add(list.get(i));
+        }
+        return result;
     }
 
     @Override
@@ -71,18 +72,21 @@ public final class OrderedIndexedSet<E> implements Set<E> {
         return map.containsKey(o);
     }
 
+    @Nonnull
     @Override
-    public @Nonnull Iterator<E> iterator() {
+    public Iterator<E> iterator() {
         return new Itr();
     }
 
+    @Nonnull
     @Override
-    public @Nonnull Object[] toArray() {
+    public Object[] toArray() {
         return list.toArray();
     }
 
+    @Nonnull
     @Override
-    public @Nonnull <T> T[] toArray(@Nonnull T[] a) {
+    public <T> T[] toArray(@Nonnull T[] a) {
         return list.toArray(a);
     }
 
@@ -118,6 +122,7 @@ public final class OrderedIndexedSet<E> implements Set<E> {
 
     @Override
     public boolean addAll(@Nonnull Collection<? extends E> c) {
+        Objects.requireNonNull(c);
         boolean modified = false;
         for (E e : c) {
             if (!map.containsKey(e)) {
@@ -175,89 +180,11 @@ public final class OrderedIndexedSet<E> implements Set<E> {
         modCount++;
     }
 
-    public E get(int index) {
-        return list.get(index);
-    }
-
-    public E getFirst() {
-        if (isEmpty()) {
-            throw new NoSuchElementException();
-        } else {
-            return get(0);
-        }
-    }
-
-    public E getLast() {
-        if (isEmpty()) {
-            throw new NoSuchElementException();
-        } else {
-            return get(size() - 1);
-        }
-    }
-
-    public void add(int index, E element) {
-        if (map.containsKey(element)) return;
-        list.add(index, element);
-        map.put(element, index);
-        for (int i = index + 1; i < list.size(); i++) {
-            E elem = list.get(i);
-            map.put(elem, i);
-        }
-        modCount++;
-    }
-
-    public void addFirst(E e) {
-        add(0, e);
-    }
-
-    public E remove(int index) {
-        E removed = list.remove(index);
-        map.remove(removed);
-        for (int i = index; i < list.size(); i++) {
-            E elem = list.get(i);
-            map.put(elem, i);
-        }
-        modCount++;
-        return removed;
-    }
-
-    public E removeFirst() {
-        if (isEmpty()) {
-            throw new NoSuchElementException();
-        } else {
-            return remove(0);
-        }
-    }
-
-    @SuppressWarnings("UnusedReturnValue")
-    public E removeLast() {
-        if (isEmpty()) {
-            throw new NoSuchElementException();
-        } else {
-            return remove(size() - 1);
-        }
-    }
-
+    @Nonnull
+    @Override
     public OrderedIndexedSet<E> reversed() {
-        OrderedIndexedSet<E> result = new OrderedIndexedSet<>();
+        OrderedIndexedSet<E> result = new OrderedIndexedSetImpl<>();
         for (int i = size() - 1; 0 <= i; i--) {
-            result.add(list.get(i));
-        }
-        return result;
-    }
-
-    @SuppressWarnings("SuspiciousMethodCalls")
-    public int indexOf(Object o) {
-        Integer idx = map.get(o);
-        return null == idx ? -1 : idx;
-    }
-
-    public @Nonnull OrderedIndexedSet<E> subList(int fromIndex, int toIndex) {
-        if (0 > fromIndex || toIndex > size() || fromIndex > toIndex) {
-            throw new IndexOutOfBoundsException("fromIndex=" + fromIndex + " toIndex=" + toIndex + " size=" + size());
-        }
-        OrderedIndexedSet<E> result = new OrderedIndexedSet<>();
-        for (int i = fromIndex; i < toIndex; i++) {
             result.add(list.get(i));
         }
         return result;
@@ -284,6 +211,7 @@ public final class OrderedIndexedSet<E> implements Set<E> {
     }
 
     private class Itr implements Iterator<E> {
+
         private final ListIterator<E> it = list.listIterator();
         private int expectedModCount = modCount;
         private E lastReturned = null;

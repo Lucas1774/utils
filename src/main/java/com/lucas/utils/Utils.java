@@ -26,9 +26,10 @@ public final class Utils {
      * @param <T>      value type
      * @return existing value from getter if non-null; otherwise the value produced by supplier
      */
-    public static <T> @Nullable T computeIfAbsent(@Nonnull Supplier<T> getter,
-                                                  @Nonnull Consumer<T> setter,
-                                                  @Nonnull Supplier<T> supplier) {
+    @Nullable
+    public static <T> T computeIfAbsent(@Nonnull Supplier<T> getter,
+                                        @Nonnull Consumer<T> setter,
+                                        @Nonnull Supplier<T> supplier) {
         T current = getter.get();
         if (null != current) {
             return current;
