@@ -4,8 +4,6 @@ import jakarta.annotation.Nonnull;
 
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.Objects;
-import java.util.function.Consumer;
 
 /**
  * Unmodifiable wrapper around an {@link OrderedIndexedSet}.
@@ -17,7 +15,7 @@ public final class UnmodifiableOrderedIndexedSet<E> implements OrderedIndexedSet
     private final OrderedIndexedSet<E> delegate;
 
     public UnmodifiableOrderedIndexedSet(@Nonnull OrderedIndexedSet<E> delegate) {
-        this.delegate = Objects.requireNonNull(delegate, "delegate");
+        this.delegate = delegate;
     }
 
     @Override
@@ -134,10 +132,6 @@ public final class UnmodifiableOrderedIndexedSet<E> implements OrderedIndexedSet
 
     private record UnmodifiableIterator<E>(Iterator<E> it) implements Iterator<E> {
 
-        private UnmodifiableIterator(Iterator<E> it) {
-            this.it = Objects.requireNonNull(it);
-        }
-
         @Override
         public boolean hasNext() {
             return it.hasNext();
@@ -146,16 +140,6 @@ public final class UnmodifiableOrderedIndexedSet<E> implements OrderedIndexedSet
         @Override
         public E next() {
             return it.next();
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException("This iterator is unmodifiable");
-        }
-
-        @Override
-        public void forEachRemaining(Consumer<? super E> action) {
-            it.forEachRemaining(action);
         }
     }
 }
