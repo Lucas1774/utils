@@ -11,16 +11,16 @@ class OrderedIndexedSetTest {
 
     @Test
     void addAndIterationOrder() {
-        OrderedIndexedSet<String> s = new OrderedIndexedSetImpl<>();
-        assertTrue(s.add("a"));
-        assertTrue(s.add("b"));
-        assertTrue(s.add("c"));
-        assertFalse(s.add("b")); // duplicate
+        OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
+        assertTrue(set.add("a"));
+        assertTrue(set.add("b"));
+        assertTrue(set.add("c"));
+        assertFalse(set.add("b"));
 
-        assertEquals(3, s.size());
-        assertArrayEquals(new Object[]{"a", "b", "c"}, s.toArray());
+        assertEquals(3, set.size());
+        assertArrayEquals(new Object[]{"a", "b", "c"}, set.toArray());
 
-        Iterator<String> it = s.iterator();
+        Iterator<String> it = set.iterator();
         assertTrue(it.hasNext());
         assertEquals("a", it.next());
         assertTrue(it.hasNext());
@@ -32,243 +32,235 @@ class OrderedIndexedSetTest {
 
     @Test
     void iteratorRemoveAndReindex() {
-        OrderedIndexedSet<String> s = new OrderedIndexedSetImpl<>();
-        s.add("a");
-        s.add("b");
-        s.add("c");
+        OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
+        set.add("a");
+        set.add("b");
+        set.add("c");
 
-        Iterator<String> it = s.iterator();
+        Iterator<String> it = set.iterator();
         assertEquals("a", it.next());
         assertEquals("b", it.next());
-        it.remove(); // removes "b"
-        assertEquals(2, s.size());
-        assertEquals(0, s.indexOf("a"));
-        assertEquals(1, s.indexOf("c"));
-        assertFalse(s.contains("b"));
+        it.remove();
+        assertEquals(2, set.size());
+        assertEquals(0, set.indexOf("a"));
+        assertEquals(1, set.indexOf("c"));
+        assertFalse(set.contains("b"));
     }
 
     @Test
     void iteratorRemoveWithoutNextThrows() {
-        OrderedIndexedSet<String> s = new OrderedIndexedSetImpl<>();
-        s.add("x");
-        Iterator<String> it = s.iterator();
+        OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
+        set.add("x");
+        Iterator<String> it = set.iterator();
         assertThrows(IllegalStateException.class, it::remove);
     }
 
     @Test
     void iteratorFailFastOnExternalModification() {
-        OrderedIndexedSet<String> s = new OrderedIndexedSetImpl<>();
-        s.add("a");
-        s.add("b");
-        Iterator<String> it = s.iterator();
-        s.add("c"); // structural modification after iterator creation
+        OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
+        set.add("a");
+        set.add("b");
+        Iterator<String> it = set.iterator();
+        set.add("c");
         assertThrows(ConcurrentModificationException.class, it::next);
     }
 
     @Test
     void toArrayPreservesOrderGeneric() {
-        OrderedIndexedSet<String> s = new OrderedIndexedSetImpl<>();
-        s.add("one");
-        s.add("two");
-        s.add("three");
+        OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
+        set.add("one");
+        set.add("two");
+        set.add("three");
 
-        String[] arr = s.toArray(new String[0]);
+        String[] arr = set.toArray(new String[0]);
         assertArrayEquals(new String[]{"one", "two", "three"}, arr);
     }
 
     @Test
     void equalsAndHashCodeOrderInsensitive() {
-        OrderedIndexedSet<String> s1 = new OrderedIndexedSetImpl<>();
-        OrderedIndexedSet<String> s2 = new OrderedIndexedSetImpl<>();
+        OrderedIndexedSet<String> set1 = new OrderedIndexedSetImpl<>();
+        OrderedIndexedSet<String> set2 = new OrderedIndexedSetImpl<>();
 
-        s1.add("a");
-        s1.add("b");
-        s1.add("c");
-        s2.add("c");
-        s2.add("a");
-        s2.add("b");
+        set1.add("a");
+        set1.add("b");
+        set1.add("c");
+        set2.add("c");
+        set2.add("a");
+        set2.add("b");
 
-        assertEquals(s1.size(), s2.size());
-        assertEquals(s1, s2);
-        assertEquals(s1.hashCode(), s2.hashCode());
+        assertEquals(set1.size(), set2.size());
+        assertEquals(set1, set2);
+        assertEquals(set1.hashCode(), set2.hashCode());
     }
 
     @Test
     void addAllWithoutDuplicates() {
-        OrderedIndexedSet<String> s = new OrderedIndexedSetImpl<>();
-        s.add("a");
-        boolean modified = s.addAll(Arrays.asList("b", "c", "d"));
+        OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
+        set.add("a");
+        boolean modified = set.addAll(Arrays.asList("b", "c", "d"));
         assertTrue(modified);
-        assertEquals(4, s.size());
-        assertEquals(0, s.indexOf("a"));
-        assertEquals(1, s.indexOf("b"));
-        assertEquals(2, s.indexOf("c"));
-        assertEquals(3, s.indexOf("d"));
+        assertEquals(4, set.size());
+        assertEquals(0, set.indexOf("a"));
+        assertEquals(1, set.indexOf("b"));
+        assertEquals(2, set.indexOf("c"));
+        assertEquals(3, set.indexOf("d"));
     }
 
     @Test
     void addAllWithDuplicates() {
-        OrderedIndexedSet<String> s = new OrderedIndexedSetImpl<>();
-        s.add("a");
-        boolean modified = s.addAll(Arrays.asList("a", "b", "b", "c"));
+        OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
+        set.add("a");
+        boolean modified = set.addAll(Arrays.asList("a", "b", "b", "c"));
         assertTrue(modified);
-        assertEquals(3, s.size());
-        assertEquals(0, s.indexOf("a"));
-        assertEquals(1, s.indexOf("b"));
-        assertEquals(2, s.indexOf("c"));
+        assertEquals(3, set.size());
+        assertEquals(0, set.indexOf("a"));
+        assertEquals(1, set.indexOf("b"));
+        assertEquals(2, set.indexOf("c"));
     }
 
     @Test
-    void removeByIndex() {
-        OrderedIndexedSet<String> s = new OrderedIndexedSetImpl<>();
-        s.add("a");
-        s.add("b");
-        s.add("c");
+    void removeAtIndex() {
+        OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
+        set.add("a");
+        set.add("b");
+        set.add("c");
 
-        String removed = s.remove(1);
+        String removed = set.remove(1);
         assertEquals("b", removed);
-        assertEquals(2, s.size());
-        assertEquals(1, s.indexOf("c"));
-        assertFalse(s.contains("b"));
+        assertEquals(2, set.size());
+        assertEquals(1, set.indexOf("c"));
+        assertFalse(set.contains("b"));
     }
 
     @Test
     void getFirstLastAndEmptyExceptions() {
-        OrderedIndexedSet<Integer> s = new OrderedIndexedSetImpl<>();
-        assertThrows(NoSuchElementException.class, s::getFirst);
-        assertThrows(NoSuchElementException.class, s::getLast);
+        OrderedIndexedSet<Integer> set = new OrderedIndexedSetImpl<>();
+        assertThrows(NoSuchElementException.class, set::getFirst);
+        assertThrows(NoSuchElementException.class, set::getLast);
 
-        s.add(10);
-        s.add(20);
-        assertEquals(10, s.getFirst());
-        assertEquals(20, s.getLast());
+        set.add(10);
+        set.add(20);
+        assertEquals(10, set.getFirst());
+        assertEquals(20, set.getLast());
     }
 
     @Test
     void removeFirstLastAndEmptyExceptions() {
-        OrderedIndexedSet<Integer> s = new OrderedIndexedSetImpl<>();
-        assertThrows(NoSuchElementException.class, s::removeFirst);
-        assertThrows(NoSuchElementException.class, s::removeLast);
+        OrderedIndexedSet<Integer> set = new OrderedIndexedSetImpl<>();
+        assertThrows(NoSuchElementException.class, set::removeFirst);
+        assertThrows(NoSuchElementException.class, set::removeLast);
 
-        s.add(10);
-        s.add(20);
-        assertEquals(10, s.removeFirst());
-        assertEquals(20, s.removeLast());
-        assertTrue(s.isEmpty());
+        set.add(10);
+        set.add(20);
+        assertEquals(10, set.removeFirst());
+        assertEquals(20, set.removeLast());
+        assertTrue(set.isEmpty());
     }
 
     @Test
     void subListReturnsNewSet() {
-        OrderedIndexedSet<String> s = new OrderedIndexedSetImpl<>();
-        s.add("a");
-        s.add("b");
-        s.add("c");
-        s.add("d");
-
-        OrderedIndexedSet<String> sub = s.subList(1, 3);
-        assertEquals(2, sub.size());
-        assertArrayEquals(new Object[]{"b", "c"}, sub.toArray());
-
-        // original unchanged
-        assertEquals(4, s.size());
-    }
-
-    @Test
-    void retainAllAndRemoveAllBehavior() {
-        OrderedIndexedSet<String> s = new OrderedIndexedSetImpl<>();
-        s.add("a");
-        s.add("b");
-        s.add("c");
-        s.add("d");
-
-        boolean changed = s.retainAll(Arrays.asList("b", "d", "x"));
-        assertTrue(changed);
-        assertEquals(2, s.size());
-        assertTrue(s.contains("b"));
-        assertTrue(s.contains("d"));
-
-        boolean removed = s.removeAll(List.of("d"));
-        assertTrue(removed);
-        assertEquals(1, s.size());
-        assertFalse(s.contains("d"));
-    }
-
-    @SuppressWarnings("ConstantValue")
-    @Test
-    void clearEmptiesSet() {
-        OrderedIndexedSet<String> s = new OrderedIndexedSetImpl<>();
-        s.add("a");
-        s.add("b");
-        s.clear();
-        assertTrue(s.isEmpty());
-        assertEquals(0, s.size());
-    }
-
-    @Test
-    void nullElementSupport() {
-        OrderedIndexedSet<String> s = new OrderedIndexedSetImpl<>();
-        assertTrue(s.add(null));
-        assertTrue(s.contains(null));
-        assertEquals(0, s.indexOf(null));
-        assertTrue(s.remove(null));
-        assertFalse(s.contains(null));
-        assertEquals(-1, s.indexOf(null));
-    }
-
-    @Test
-    void removeReturnsTrueButElementGone() {
-        OrderedIndexedSet<String> s = new OrderedIndexedSetImpl<>();
-        s.add(null);
-        assertTrue(s.remove(null));
-        assertFalse(s.contains(null));
-        assertEquals(-1, s.indexOf(null));
-    }
-
-    @Test
-    void testRemoveAtIndex() {
         OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
         set.add("a");
         set.add("b");
         set.add("c");
         set.add("d");
 
-        // Remove middle element
-        String removed = set.remove(1); // "b"
+        OrderedIndexedSet<String> sub = set.subList(1, 3);
+        assertEquals(2, sub.size());
+        assertArrayEquals(new Object[]{"b", "c"}, sub.toArray());
+
+        assertEquals(4, set.size());
+    }
+
+    @Test
+    void retainAllAndRemoveAllBehavior() {
+        OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
+        set.add("a");
+        set.add("b");
+        set.add("c");
+        set.add("d");
+
+        boolean changed = set.retainAll(Arrays.asList("b", "d", "x"));
+        assertTrue(changed);
+        assertEquals(2, set.size());
+        assertTrue(set.contains("b"));
+        assertTrue(set.contains("d"));
+
+        boolean removed = set.removeAll(List.of("d"));
+        assertTrue(removed);
+        assertEquals(1, set.size());
+        assertFalse(set.contains("d"));
+    }
+
+    @SuppressWarnings("ConstantValue")
+    @Test
+    void clearEmptiesSet() {
+        OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
+        set.add("a");
+        set.add("b");
+        set.clear();
+        assertTrue(set.isEmpty());
+        assertEquals(0, set.size());
+    }
+
+    @Test
+    void nullElementSupport() {
+        OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
+        assertTrue(set.add(null));
+        assertTrue(set.contains(null));
+        assertEquals(0, set.indexOf(null));
+        assertTrue(set.remove(null));
+        assertFalse(set.contains(null));
+        assertEquals(-1, set.indexOf(null));
+    }
+
+    @Test
+    void removeReturnsTrueButElementGone() {
+        OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
+        set.add(null);
+        assertTrue(set.remove(null));
+        assertFalse(set.contains(null));
+        assertEquals(-1, set.indexOf(null));
+    }
+
+    @Test
+    void removeAtIndexMultipleOperations() {
+        OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
+        set.add("a");
+        set.add("b");
+        set.add("c");
+        set.add("d");
+
+        String removed = set.remove(1);
         assertEquals("b", removed);
         assertEquals(3, set.size());
         assertEquals("a", set.get(0));
         assertEquals("c", set.get(1));
         assertEquals("d", set.get(2));
-
-        // Check indexOf reflects shift
         assertEquals(0, set.indexOf("a"));
         assertEquals(1, set.indexOf("c"));
         assertEquals(2, set.indexOf("d"));
 
-        // Remove first element
-        removed = set.remove(0); // "a"
+        removed = set.remove(0);
         assertEquals("a", removed);
         assertEquals(2, set.size());
         assertEquals("c", set.get(0));
         assertEquals("d", set.get(1));
 
-        // Remove last element
-        removed = set.remove(set.size() - 1); // "d"
+        removed = set.remove(set.size() - 1);
         assertEquals("d", removed);
         assertEquals(1, set.size());
         assertEquals("c", set.get(0));
 
-        // Remove only element left
-        removed = set.remove(0); // "c"
+        removed = set.remove(0);
         assertEquals("c", removed);
         assertTrue(set.isEmpty());
 
-        // Out of bounds removal
         assertThrows(IndexOutOfBoundsException.class, () -> set.remove(0));
     }
 
     @Test
-    void testReversed() {
+    void reversed() {
         OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
         set.add("a");
         set.add("b");
@@ -276,31 +268,25 @@ class OrderedIndexedSetTest {
 
         OrderedIndexedSet<String> reversed = set.reversed();
 
-        // Original unchanged
         assertEquals(3, set.size());
         assertEquals("a", set.get(0));
         assertEquals("b", set.get(1));
         assertEquals("c", set.get(2));
 
-        // Reversed order
         assertEquals(3, reversed.size());
         assertEquals("c", reversed.get(0));
         assertEquals("b", reversed.get(1));
         assertEquals("a", reversed.get(2));
-
-        // Check indexOf
         assertEquals(0, reversed.indexOf("c"));
         assertEquals(1, reversed.indexOf("b"));
         assertEquals(2, reversed.indexOf("a"));
 
-        // Single-element set
         OrderedIndexedSet<String> single = new OrderedIndexedSetImpl<>();
         single.add("x");
         OrderedIndexedSet<String> singleReversed = single.reversed();
         assertEquals(1, singleReversed.size());
         assertEquals("x", singleReversed.get(0));
 
-        // Empty set
         OrderedIndexedSet<String> empty = new OrderedIndexedSetImpl<>();
         OrderedIndexedSet<String> emptyReversed = empty.reversed();
         assertTrue(emptyReversed.isEmpty());
@@ -308,33 +294,29 @@ class OrderedIndexedSetTest {
 
     @SuppressWarnings("OverwrittenKey")
     @Test
-    void testReversedDuplicatesIgnored() {
+    void reversedDuplicatesIgnored() {
         OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
         set.add("a");
         set.add("b");
-        set.add("a"); // duplicate
+        set.add("a");
         OrderedIndexedSet<String> reversed = set.reversed();
 
-        // Duplicate "a" only appears once
         assertEquals(2, reversed.size());
         assertEquals("b", reversed.get(0));
         assertEquals("a", reversed.get(1));
     }
 
     @Test
-    void of_createsUnmodifiableSet_andThrowsOnMutation() {
-        // instantiate with duplicates; first occurrence should be kept
+    void ofCreatesUnmodifiableSet() {
         OrderedIndexedSet<String> set = OrderedIndexedSet.of("a", "b", "a");
 
-        // read assertions
-        assertEquals(2, set.size(), "duplicates should be removed");
+        assertEquals(2, set.size());
         assertEquals("a", set.get(0));
         assertEquals("b", set.get(1));
         assertTrue(set.contains("a"));
         assertEquals(0, set.indexOf("a"));
         assertEquals(1, set.indexOf("b"));
 
-        // iterator should traverse in insertion order
         Iterator<String> it = set.iterator();
         assertTrue(it.hasNext());
         assertEquals("a", it.next());
@@ -342,72 +324,64 @@ class OrderedIndexedSetTest {
         assertEquals("b", it.next());
         assertFalse(it.hasNext());
 
-        // forbidden operations must throw UnsupportedOperationException
         assertThrows(UnsupportedOperationException.class, () -> set.add("c"));
         assertThrows(UnsupportedOperationException.class, () -> set.remove("a"));
         assertThrows(UnsupportedOperationException.class, set::clear);
 
-        // iterator.remove should also be unsupported (if backed iterator exposes remove)
         Iterator<String> it2 = set.iterator();
         it2.next();
         assertThrows(UnsupportedOperationException.class, it2::remove);
     }
 
     @Test
-    void collector_accumulates_preservesOrder_and_isModifiable() {
+    void collectorModifiable() {
         List<String> input = List.of("one", "two", "one", "three", "two");
 
         OrderedIndexedSet<String> set = input.stream()
                 .collect(OrderedIndexedSet.toOrderedIndexedSet());
 
-        // deduped, first occurrences preserved
         assertEquals(3, set.size());
         assertEquals("one", set.get(0));
         assertEquals("two", set.get(1));
         assertEquals("three", set.get(2));
 
-        // modifiable result
         assertTrue(set.add("four"));
         assertEquals(4, set.size());
         assertEquals("four", set.get(3));
     }
 
     @Test
-    void collector_accumulates_preservesOrder_and_isNotModifiable() {
+    void collectorUnmodifiable() {
         List<String> input = List.of("one", "two", "one", "three", "two");
 
         OrderedIndexedSet<String> set = input.stream()
                 .collect(OrderedIndexedSet.toUnmodifiableOrderedIndexedSet());
 
-        // deduped, first occurrences preserved
         assertEquals(3, set.size());
         assertEquals("one", set.get(0));
         assertEquals("two", set.get(1));
         assertEquals("three", set.get(2));
 
-        // unmodifiable result
         assertThrows(UnsupportedOperationException.class, () -> set.add("four"));
     }
 
     @Test
-    void spliterator_hasCorrectCharacteristics_and_parallelCollectionPreservesEncounterOrder() {
+    void spliteratorCharacteristicsAndParallelCollection() {
         OrderedIndexedSet<String> set = Stream.of("one", "two", "three")
                 .collect(OrderedIndexedSet.toOrderedIndexedSet());
-        set.add("four"); // keep same final contents as previous test
+        set.add("four");
 
         Spliterator<String> sp = set.spliterator();
         int ch = sp.characteristics();
-        assertNotEquals(0, ch & Spliterator.ORDERED, "ORDERED expected");
-        assertNotEquals(0, ch & Spliterator.DISTINCT, "DISTINCT expected");
-        assertNotEquals(0, ch & Spliterator.SIZED, "SIZED expected");
-        assertNotEquals(0, ch & Spliterator.SUBSIZED, "SUBSIZED expected");
+        assertNotEquals(0, ch & Spliterator.ORDERED);
+        assertNotEquals(0, ch & Spliterator.DISTINCT);
+        assertNotEquals(0, ch & Spliterator.SIZED);
+        assertNotEquals(0, ch & Spliterator.SUBSIZED);
 
-        // traversal preserves encounter order
         List<String> fromSpliterator = new ArrayList<>();
         sp.forEachRemaining(fromSpliterator::add);
         assertEquals(List.of("one", "two", "three", "four"), fromSpliterator);
 
-        // parallel stream collecting: elements should appear in first-occurrence encounter order
         OrderedIndexedSet<String> fromParallel = Stream.of("a", "b", "a", "c")
                 .parallel()
                 .collect(OrderedIndexedSet.toOrderedIndexedSet());
@@ -418,17 +392,15 @@ class OrderedIndexedSetTest {
     }
 
     @Test
-    void copyOf_createsUnmodifiableCopy() {
+    void copyOfCreatesUnmodifiableCopy() {
         List<String> input = List.of("a", "b", "c");
         OrderedIndexedSet<String> copy = OrderedIndexedSet.copyOf(input);
 
-        // basic correctness
         assertEquals(3, copy.size());
         assertEquals("a", copy.get(0));
         assertEquals("b", copy.get(1));
         assertEquals("c", copy.get(2));
 
-        // unmodifiable check
         assertThrows(UnsupportedOperationException.class, () -> copy.add("d"));
         assertThrows(UnsupportedOperationException.class, () -> copy.remove("a"));
     }
