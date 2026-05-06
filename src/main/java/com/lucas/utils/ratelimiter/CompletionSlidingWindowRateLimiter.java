@@ -6,6 +6,7 @@ import jakarta.annotation.Nonnull;
 import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 
 import static com.lucas.utils.ratelimiter.SlidingWindowRateLimiter.*;
@@ -14,7 +15,7 @@ import static com.lucas.utils.ratelimiter.SlidingWindowRateLimiter.*;
  * A thread-safe sliding window rate limiter with in-flight request tracking.
  * <p>Limits the number of requests that are currently in flight or have recently completed
  * within a given time window. For permission refilling purposes,
- * time starts ticking once a previous permission-taker releases it, and not when it takes it
+ * time starts ticking once a previous permission-taker releases it, and not when it takes it.
  * {@link #call(Callable)} blocks callers until a slot becomes available
  * or the optional timeout expires.
  * <p>Optionally supports a timeout, specifying how long a caller should wait for
@@ -61,21 +62,44 @@ public final class CompletionSlidingWindowRateLimiter {
     }
 
     /**
-     * Attempts to acquire a permit, respecting rate limits and in-flight requests.
+     * Executes a task after acquiring a permit, respecting rate limits and in-flight requests.
      * <p>If the current number of requests within the window plus in-flight requests
      * is below the limit, a permit is granted immediately. Otherwise, this method
      * waits until a slot becomes available or the configured timeout elapses.
      *
+     * @param task the task to execute
+     * @param <T>  the return type of the task
      * @return the result of the task
+     * @throws Exception                 if the task throws an exception
      * @throws RateLimitTimeoutException if the timeout expired before a permit could be acquired
      */
-    public <T> T call(Callable<T> task) throws Exception {
-        try (var permit = acquirePermit()) {
+    public <T> T call(@Nonnull Callable<T> task) throws Exception {
+        try (var permit = acquirePermission()) {
             return task.call();
         }
     }
 
-    private synchronized Permit acquirePermit() throws RateLimitTimeoutException {
+    /**
+     * Attempts to execute a task without waiting for a permit.
+     * <p>If a permit is available immediately, the task is executed and its result returned.
+     * Otherwise, returns an empty Optional.
+     *
+     * @param task the task to execute
+     * @param <T>  the return type of the task
+     * @return an Optional containing the task result if executed, or empty if no permit available
+     * @throws Exception if the task throws an exception
+     */
+    public <T> Optional<T> tryCall(@Nonnull Callable<T> task) throws Exception {
+        Optional<Permit> permit = tryAcquirePermission();
+        if (permit.isPresent()) {
+            try (Permit p = permit.get()) {
+                return Optional.of(task.call());
+            }
+        }
+        return Optional.empty();
+    }
+
+    private synchronized Permit acquirePermission() throws RateLimitTimeoutException {
         long deadline = 0 < timeout ? System.nanoTime() + timeout : Long.MAX_VALUE;
         while (true) {
             long now = System.nanoTime();
@@ -108,6 +132,18 @@ public final class CompletionSlidingWindowRateLimiter {
                 }
             }
         }
+    }
+
+    private synchronized Optional<Permit> tryAcquirePermission() {
+        long now = System.nanoTime();
+        while (!timestamps.isEmpty() && timestamps.peekFirst() <= now - windowNanos) {
+            timestamps.pollFirst();
+        }
+        if (inFlight + timestamps.size() < maxRequests) {
+            inFlight++;
+            return Optional.of(new Permit(this));
+        }
+        return Optional.empty();
     }
 
     private synchronized void releasePermission() {

@@ -19,12 +19,13 @@ import java.util.Objects;
 @SuppressWarnings("unused")
 public class SlidingWindowRateLimiter {
 
-    protected static final String NON_POSITIVE_TIMEOUT = "timeout param should be positive.";
-    protected static final String NON_POSITIVE_WINDOW = "window param should be positive.";
     protected static final String NON_POSITIVE_MAX_REQUESTS = "maxRequest param should be positive.";
+    protected static final String NON_POSITIVE_WINDOW = "window param should be positive.";
+    protected static final String NON_POSITIVE_TIMEOUT = "timeout param should be positive.";
+
+    private final Deque<Long> timestamps = new ArrayDeque<>();
     private final int maxRequests;
     private final long windowNanos;
-    private final Deque<Long> timestamps = new ArrayDeque<>();
     private final long timeout;
 
     public SlidingWindowRateLimiter(int maxRequests, @Nonnull Duration window) {
@@ -93,5 +94,24 @@ public class SlidingWindowRateLimiter {
                 }
             }
         }
+    }
+
+    /**
+     * Attempts to acquire permission without waiting.
+     * <p>If the current number of requests within the window is below the limit,
+     * permission is granted immediately. Otherwise, returns {@code false}.
+     *
+     * @return {@code true} if permission was acquired; {@code false} if no permit available
+     */
+    public synchronized boolean tryAcquirePermission() {
+        long now = System.nanoTime();
+        while (!timestamps.isEmpty() && timestamps.peekFirst() <= now - windowNanos) {
+            timestamps.pollFirst();
+        }
+        if (timestamps.size() < maxRequests) {
+            timestamps.addLast(now);
+            return true;
+        }
+        return false;
     }
 }
