@@ -1,75 +1,30 @@
 package com.lucas.utils.ratelimiter;
 
+import com.lucas.utils.ratelimiter.exception.RateLimitTimeoutException;
 import jakarta.annotation.Nonnull;
 
 import java.time.Duration;
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.Callable;
 
-/**
- * A thread-safe sliding window rate limiter.
- * <p>Limits the number of allowed requests within a given time window using
- * a sliding window algorithm.
- * {@link #acquirePermission()} blocks callers (does not reject them)
- * <p>Optionally supports a timeout, specifying how long a caller should wait for
- * permission to acquire before giving up.
- * If none is provided, caller will be blocked indefinitely.
- */
 @SuppressWarnings("unused")
-public class SlidingWindowRateLimiter {
-
-    protected static final String NON_POSITIVE_MAX_REQUESTS = "maxRequest param should be positive.";
-    protected static final String NON_POSITIVE_WINDOW = "window param should be positive.";
-    protected static final String NON_POSITIVE_TIMEOUT = "timeout param should be positive.";
-
-    private final Deque<Long> timestamps = new ArrayDeque<>();
-    private final int maxRequests;
-    private final long windowNanos;
-    private final long timeout;
+public final class SlidingWindowRateLimiter extends AbstractSlidingWindowRateLimiter {
 
     public SlidingWindowRateLimiter(int maxRequests, @Nonnull Duration window) {
-        if (0 >= maxRequests) {
-            throw new IllegalArgumentException(NON_POSITIVE_MAX_REQUESTS);
-        }
-        if (!window.isPositive()) {
-            throw new IllegalArgumentException(NON_POSITIVE_WINDOW);
-        }
-        this.maxRequests = maxRequests;
-        windowNanos = window.toNanos();
-        timeout = 0;
+        super(maxRequests, window);
     }
 
     public SlidingWindowRateLimiter(int maxRequests, @Nonnull Duration window, @Nonnull Duration timeout) {
-        if (0 >= maxRequests) {
-            throw new IllegalArgumentException(NON_POSITIVE_MAX_REQUESTS);
-        }
-        if (!window.isPositive()) {
-            throw new IllegalArgumentException(NON_POSITIVE_WINDOW);
-        }
-        if (!timeout.isPositive()) {
-            throw new IllegalArgumentException(NON_POSITIVE_TIMEOUT);
-        }
-        this.maxRequests = maxRequests;
-        windowNanos = window.toNanos();
-        this.timeout = timeout.toNanos();
+        super(maxRequests, window, timeout);
     }
 
-
-    /**
-     * Attempts to acquire permission, respecting rate limits.
-     * <p>If the current number of requests within the window is below the limit,
-     * permission is granted immediately. Otherwise, this method waits until
-     * a slot becomes available or the configured timeout elapses.
-     *
-     * @return {@code true} if permission was acquired; {@code false} if the timeout expired
-     */
-    public synchronized boolean acquirePermission() {
+    private synchronized void acquireOrThrow() throws RateLimitTimeoutException, InterruptedException {
         long deadline = 0 < timeout ? System.nanoTime() + timeout : Long.MAX_VALUE;
         while (true) {
             long now = System.nanoTime();
             if (now >= deadline) {
-                return false;
+                throw new RateLimitTimeoutException(RATE_LIMIT_TIMEOUT);
             }
             boolean removed = false;
             while (!timestamps.isEmpty() && timestamps.peekFirst() <= now - windowNanos) {
@@ -81,23 +36,54 @@ public class SlidingWindowRateLimiter {
             }
             if (timestamps.size() < maxRequests) {
                 timestamps.addLast(now);
-                return true;
+                return;
             }
-
-            long waitTime = Objects.requireNonNull(timestamps.peekFirst()) + windowNanos - now;
+            long waitTime =
+                    Math.min(Objects.requireNonNull(timestamps.peekFirst()) + windowNanos - now, deadline - now);
             if (0 < waitTime) {
-                try {
-                    wait(waitTime / 1_000_000L, (int) (waitTime % 1_000_000L));
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return false;
-                }
+                wait(waitTime / 1_000_000L, (int) (waitTime % 1_000_000L));
             }
+        }
+    }
+
+    @Override
+    public <T> T call(@Nonnull Callable<T> task) throws Exception {
+        acquireOrThrow();
+        return task.call();
+    }
+
+    @Override
+    public <T> Optional<T> tryCall(@Nonnull Callable<T> task) throws Exception {
+        if (!tryAcquirePermission()) {
+            return Optional.empty();
+        }
+        return Optional.of(task.call());
+    }
+
+    /**
+     * Attempts to acquire permission, respecting rate limits.
+     *
+     * <p>If the current number of requests within the window is below the limit,
+     * permission is granted immediately. Otherwise, this method waits until
+     * a slot becomes available or the configured timeout elapses.
+     *
+     * @return {@code true} if permission was acquired; {@code false} if interrupted or the timeout expired.
+     */
+    public synchronized boolean acquirePermission() {
+        try {
+            acquireOrThrow();
+            return true;
+        } catch (RateLimitTimeoutException e) {
+            return false;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
         }
     }
 
     /**
      * Attempts to acquire permission without waiting.
+     *
      * <p>If the current number of requests within the window is below the limit,
      * permission is granted immediately. Otherwise, returns {@code false}.
      *
