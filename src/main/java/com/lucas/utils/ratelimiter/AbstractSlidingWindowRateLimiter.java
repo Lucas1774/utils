@@ -6,12 +6,12 @@ import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-public abstract class AbstractSlidingWindowRateLimiter implements ISlidingWindowRateLimiter {
+public abstract class AbstractSlidingWindowRateLimiter implements SlidingWindowRateLimiter {
 
-    private static final String NON_POSITIVE_MAX_REQUESTS = "maxRequest param should be positive.";
-    private static final String NON_POSITIVE_WINDOW = "window param should be positive.";
     protected static final String RATE_LIMIT_TIMEOUT =
             "Could not acquire rate limit permit within the configured timeout.";
+    private static final String NON_POSITIVE_MAX_REQUESTS = "maxRequest param should be positive.";
+    private static final String NON_POSITIVE_WINDOW = "window param should be positive.";
     protected final Deque<Long> timestamps = new ArrayDeque<>();
     protected final int maxRequests;
     protected final long windowNanos;

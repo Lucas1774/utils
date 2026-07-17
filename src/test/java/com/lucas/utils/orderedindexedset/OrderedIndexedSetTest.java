@@ -2,10 +2,21 @@ package com.lucas.utils.orderedindexedset;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Spliterator;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OrderedIndexedSetTest {
 
@@ -49,7 +60,8 @@ class OrderedIndexedSetTest {
 
     @Test
     void iteratorRemoveWithoutNextThrows() {
-        OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
+        @SuppressWarnings("MismatchedQueryAndUpdateOfCollection") OrderedIndexedSet<String> set =
+                new OrderedIndexedSetImpl<>();
         set.add("x");
         Iterator<String> it = set.iterator();
         assertThrows(IllegalStateException.class, it::remove);
@@ -57,7 +69,8 @@ class OrderedIndexedSetTest {
 
     @Test
     void iteratorFailFastOnExternalModification() {
-        OrderedIndexedSet<String> set = new OrderedIndexedSetImpl<>();
+        @SuppressWarnings("MismatchedQueryAndUpdateOfCollection") OrderedIndexedSet<String> set =
+                new OrderedIndexedSetImpl<>();
         set.add("a");
         set.add("b");
         Iterator<String> it = set.iterator();
@@ -79,11 +92,11 @@ class OrderedIndexedSetTest {
     @Test
     void equalsAndHashCodeOrderInsensitive() {
         OrderedIndexedSet<String> set1 = new OrderedIndexedSetImpl<>();
-        OrderedIndexedSet<String> set2 = new OrderedIndexedSetImpl<>();
-
         set1.add("a");
         set1.add("b");
         set1.add("c");
+
+        OrderedIndexedSet<String> set2 = new OrderedIndexedSetImpl<>();
         set2.add("c");
         set2.add("a");
         set2.add("b");
@@ -266,13 +279,12 @@ class OrderedIndexedSetTest {
         set.add("b");
         set.add("c");
 
-        OrderedIndexedSet<String> reversed = set.reversed();
-
         assertEquals(3, set.size());
         assertEquals("a", set.get(0));
         assertEquals("b", set.get(1));
         assertEquals("c", set.get(2));
 
+        OrderedIndexedSet<String> reversed = set.reversed();
         assertEquals(3, reversed.size());
         assertEquals("c", reversed.get(0));
         assertEquals("b", reversed.get(1));
@@ -337,8 +349,7 @@ class OrderedIndexedSetTest {
     void collectorModifiable() {
         List<String> input = List.of("one", "two", "one", "three", "two");
 
-        OrderedIndexedSet<String> set = input.stream()
-                .collect(OrderedIndexedSet.toOrderedIndexedSet());
+        OrderedIndexedSet<String> set = input.stream().collect(OrderedIndexedSet.toOrderedIndexedSet());
 
         assertEquals(3, set.size());
         assertEquals("one", set.get(0));
@@ -354,8 +365,7 @@ class OrderedIndexedSetTest {
     void collectorUnmodifiable() {
         List<String> input = List.of("one", "two", "one", "three", "two");
 
-        OrderedIndexedSet<String> set = input.stream()
-                .collect(OrderedIndexedSet.toUnmodifiableOrderedIndexedSet());
+        OrderedIndexedSet<String> set = input.stream().collect(OrderedIndexedSet.toUnmodifiableOrderedIndexedSet());
 
         assertEquals(3, set.size());
         assertEquals("one", set.get(0));
@@ -367,8 +377,8 @@ class OrderedIndexedSetTest {
 
     @Test
     void spliteratorCharacteristicsAndParallelCollection() {
-        OrderedIndexedSet<String> set = Stream.of("one", "two", "three")
-                .collect(OrderedIndexedSet.toOrderedIndexedSet());
+        OrderedIndexedSet<String> set =
+                Stream.of("one", "two", "three").collect(OrderedIndexedSet.toOrderedIndexedSet());
         set.add("four");
 
         Spliterator<String> sp = set.spliterator();
@@ -382,9 +392,8 @@ class OrderedIndexedSetTest {
         sp.forEachRemaining(fromSpliterator::add);
         assertEquals(List.of("one", "two", "three", "four"), fromSpliterator);
 
-        OrderedIndexedSet<String> fromParallel = Stream.of("a", "b", "a", "c")
-                .parallel()
-                .collect(OrderedIndexedSet.toOrderedIndexedSet());
+        OrderedIndexedSet<String> fromParallel =
+                Stream.of("a", "b", "a", "c").parallel().collect(OrderedIndexedSet.toOrderedIndexedSet());
         assertEquals(3, fromParallel.size());
         assertEquals("a", fromParallel.get(0));
         assertEquals("b", fromParallel.get(1));

@@ -2,13 +2,20 @@ package com.lucas.utils.orderedindexedset;
 
 import jakarta.annotation.Nonnull;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.Set;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.stream.Collector;
 
 /**
  * A {@link Set} implementation that maintains insertion order and allows indexed access to elements.
- * <p>
- * It is intended for use cases where both deduplication and insertion order must be preserved.
+ *
+ * <p>It is intended for use cases where both deduplication and insertion order must be preserved.
  * This interface combines characteristics of both a {@link List} and a {@link Set}:
  * <ul>
  *   <li>Preserves insertion order.</li>
@@ -23,8 +30,8 @@ import java.util.stream.Collector;
  *     </ul>
  *   </li>
  * </ul>
- * <p>
- * <b>Notes:</b>
+ *
+ * <p><b>Notes:</b>
  * <ul>
  *   <li>Not necessarily thread-safe.</li>
  *   <li>Intended for moderate-sized collections where simplicity and correctness are preferred.</li>
@@ -32,7 +39,8 @@ import java.util.stream.Collector;
  *
  * @param <E> the type of elements maintained by this set
  */
-public sealed interface OrderedIndexedSet<E> extends Set<E> permits OrderedIndexedSetImpl, UnmodifiableOrderedIndexedSet {
+public sealed interface OrderedIndexedSet<E> extends Set<E>
+        permits OrderedIndexedSetImpl, UnmodifiableOrderedIndexedSet {
 
     /**
      * Creates an {@link UnmodifiableOrderedIndexedSet} containing the given elements
@@ -57,14 +65,14 @@ public sealed interface OrderedIndexedSet<E> extends Set<E> permits OrderedIndex
      * in order of appearance. Duplicate elements are ignored. Null elements are not
      * permitted.
      *
-     * @param c collection to copy
+     * @param c   collection to copy
      * @param <E> element type
      * @return an unmodifiable {@code OrderedIndexedSet} with the elements of the given collection
      * @throws NullPointerException if {@code c} or any element is {@code null}
      */
     static <E> OrderedIndexedSet<E> copyOf(Collection<? extends E> c) {
         for (E e : c) {
-            Objects.requireNonNull(e, "elements must not be null");
+            Objects.requireNonNull(e);
         }
         OrderedIndexedSetImpl<E> impl = new OrderedIndexedSetImpl<>(c);
         return new UnmodifiableOrderedIndexedSet<>(impl);
@@ -78,14 +86,10 @@ public sealed interface OrderedIndexedSet<E> extends Set<E> permits OrderedIndex
      * @return a collector producing an {@code OrderedIndexedSet}
      */
     static <T> Collector<T, OrderedIndexedSet<T>, OrderedIndexedSet<T>> toOrderedIndexedSet() {
-        return Collector.of(
-                OrderedIndexedSetImpl::new,
-                OrderedIndexedSet::add,
-                (left, right) -> {
-                    left.addAll(right);
-                    return left;
-                }
-        );
+        return Collector.of(OrderedIndexedSetImpl::new, OrderedIndexedSet::add, (left, right) -> {
+            left.addAll(right);
+            return left;
+        });
     }
 
     /**
@@ -96,17 +100,11 @@ public sealed interface OrderedIndexedSet<E> extends Set<E> permits OrderedIndex
      * @return a collector producing an {@code OrderedIndexedSet}
      */
     static <T> Collector<T, OrderedIndexedSet<T>, OrderedIndexedSet<T>> toUnmodifiableOrderedIndexedSet() {
-        return Collector.of(
-                OrderedIndexedSetImpl::new,
-                OrderedIndexedSet::add,
-                (left, right) -> {
-                    left.addAll(right);
-                    return left;
-                },
-                UnmodifiableOrderedIndexedSet::new
-        );
+        return Collector.of(OrderedIndexedSetImpl::new, OrderedIndexedSet::add, (left, right) -> {
+            left.addAll(right);
+            return left;
+        }, UnmodifiableOrderedIndexedSet::new);
     }
-
 
     /**
      * Returns the element at the specified position in this set.
@@ -135,9 +133,10 @@ public sealed interface OrderedIndexedSet<E> extends Set<E> permits OrderedIndex
     int indexOf(Object o);
 
     /**
-     * Returns a new set containing the elements between the specified {@code fromIndex}, inclusive, and {@code toIndex}, exclusive.
-     * <p>
-     * This is not a view, meaning modifications to the returned set
+     * Returns a new set containing the elements between the specified {@code fromIndex}, inclusive,
+     * and {@code toIndex}, exclusive.
+     *
+     * <p>This is not a view, meaning modifications to the returned set
      * (such as adding or removing elements) do not affect the original set, and changes to the
      * original set do not affect the returned set. Both sets will contain references to the same objects,
      * so if they are mutable themselves, modifications to them will be visible from both.
@@ -152,8 +151,8 @@ public sealed interface OrderedIndexedSet<E> extends Set<E> permits OrderedIndex
 
     /**
      * Returns a new {@code OrderedIndexedSet} with the elements in reverse order.
-     * <p>
-     * This is not a view, meaning modifications to the returned set
+     *
+     * <p>This is not a view, meaning modifications to the returned set
      * (such as adding or removing elements) do not affect the original set, and changes to the
      * original set do not affect the returned set. Both sets will contain references to the same objects,
      * so if they are mutable themselves, modifications to them will be visible from both.
@@ -165,18 +164,15 @@ public sealed interface OrderedIndexedSet<E> extends Set<E> permits OrderedIndex
 
     /**
      * Returns a {@link Spliterator} over the elements in this set.
-     * <p>
-     * The spliterator is ordered, distinct, sized, and subsized.
+     *
+     * <p>The spliterator is ordered, distinct, sized, and subsized.
      *
      * @return a {@code Spliterator} over the elements in this set
      */
     @Override
-    default
-    @Nonnull Spliterator<E> spliterator() {
-        return Spliterators.spliterator(
-                this,
-                Spliterator.ORDERED | Spliterator.DISTINCT | Spliterator.SIZED | Spliterator.SUBSIZED
-        );
+    default @Nonnull Spliterator<E> spliterator() {
+        return Spliterators.spliterator(this,
+                Spliterator.ORDERED | Spliterator.DISTINCT | Spliterator.SIZED | Spliterator.SUBSIZED);
     }
 
     /**

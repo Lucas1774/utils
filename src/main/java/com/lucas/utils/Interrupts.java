@@ -19,7 +19,7 @@ public final class Interrupts {
      * @param task        task to run
      * @param onInterrupt on interrupt callback
      */
-    public static void runOrSwallow(@Nonnull IORunnable task,
+    public static void runOrSwallow(@Nonnull Runnable task,
                                     @Nonnull Consumer<? super InterruptedException> onInterrupt) {
         try {
             task.run();
@@ -39,7 +39,7 @@ public final class Interrupts {
      * @return value returned by task or default value if interrupted
      */
     @Nullable
-    public static <T> T callOrSwallow(@Nonnull IOCallable<T> task,
+    public static <T> T callOrSwallow(@Nonnull Callable<T> task,
                                       @Nonnull Supplier<T> defaultProvider,
                                       @Nonnull Consumer<? super InterruptedException> onInterrupt) {
         try {
@@ -58,8 +58,7 @@ public final class Interrupts {
      * @param task        task to run
      * @param onInterrupt on interrupt callback
      */
-    public static void runOrThrow(@Nonnull IORunnable task,
-                                  @Nonnull Consumer<? super InterruptedException> onInterrupt) {
+    public static void runOrThrow(@Nonnull Runnable task, @Nonnull Consumer<? super InterruptedException> onInterrupt) {
         try {
             task.run();
         } catch (InterruptedException e) {
@@ -79,7 +78,7 @@ public final class Interrupts {
      * @return value returned by task
      */
     @Nullable
-    public static <T> T callOrThrow(@Nonnull IOCallable<T> task,
+    public static <T> T callOrThrow(@Nonnull Callable<T> task,
                                     @Nonnull Consumer<? super InterruptedException> onInterrupt) {
         try {
             return task.call();
@@ -90,15 +89,32 @@ public final class Interrupts {
         }
     }
 
+    /**
+     * A task that can be executed.
+     */
     @SuppressWarnings("RedundantThrows")
     @FunctionalInterface
-    public interface IORunnable {
+    public interface Runnable {
+        /**
+         * Executes the task.
+         *
+         * @throws InterruptedException if interrupted
+         */
         void run() throws InterruptedException;
     }
 
+    /**
+     * A task that produces a result.
+     */
     @SuppressWarnings("RedundantThrows")
     @FunctionalInterface
-    public interface IOCallable<T> {
+    public interface Callable<T> {
+        /**
+         * Executes the task.
+         *
+         * @return the result
+         * @throws InterruptedException if interrupted
+         */
         T call() throws InterruptedException;
     }
 }

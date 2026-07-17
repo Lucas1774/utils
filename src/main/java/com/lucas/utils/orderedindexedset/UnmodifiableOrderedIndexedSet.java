@@ -12,6 +12,7 @@ import java.util.Iterator;
  */
 public final class UnmodifiableOrderedIndexedSet<E> implements OrderedIndexedSet<E> {
 
+    private static final String THIS_SET_IS_UNMODIFIABLE = "This set is unmodifiable";
     private final OrderedIndexedSet<E> delegate;
 
     public UnmodifiableOrderedIndexedSet(@Nonnull OrderedIndexedSet<E> delegate) {
@@ -25,7 +26,7 @@ public final class UnmodifiableOrderedIndexedSet<E> implements OrderedIndexedSet
 
     @Override
     public E remove(int index) {
-        throw new UnsupportedOperationException("This set is unmodifiable");
+        throw new UnsupportedOperationException(THIS_SET_IS_UNMODIFIABLE);
     }
 
     @Override
@@ -37,6 +38,12 @@ public final class UnmodifiableOrderedIndexedSet<E> implements OrderedIndexedSet
     @Override
     public OrderedIndexedSet<E> subList(int fromIndex, int toIndex) {
         return new UnmodifiableOrderedIndexedSet<>(delegate.subList(fromIndex, toIndex));
+    }
+
+    @Nonnull
+    @Override
+    public OrderedIndexedSet<E> reversed() {
+        return new UnmodifiableOrderedIndexedSet<>(delegate.reversed());
     }
 
     @Override
@@ -74,12 +81,12 @@ public final class UnmodifiableOrderedIndexedSet<E> implements OrderedIndexedSet
 
     @Override
     public boolean add(E e) {
-        throw new UnsupportedOperationException("This set is unmodifiable");
+        throw new UnsupportedOperationException(THIS_SET_IS_UNMODIFIABLE);
     }
 
     @Override
     public boolean remove(Object o) {
-        throw new UnsupportedOperationException("This set is unmodifiable");
+        throw new UnsupportedOperationException(THIS_SET_IS_UNMODIFIABLE);
     }
 
     @Override
@@ -89,40 +96,38 @@ public final class UnmodifiableOrderedIndexedSet<E> implements OrderedIndexedSet
 
     @Override
     public boolean addAll(@Nonnull Collection<? extends E> c) {
-        throw new UnsupportedOperationException("This set is unmodifiable");
+        throw new UnsupportedOperationException(THIS_SET_IS_UNMODIFIABLE);
     }
 
     @Override
     public boolean retainAll(@Nonnull Collection<?> c) {
-        throw new UnsupportedOperationException("This set is unmodifiable");
+        throw new UnsupportedOperationException(THIS_SET_IS_UNMODIFIABLE);
     }
 
     @Override
     public boolean removeAll(@Nonnull Collection<?> c) {
-        throw new UnsupportedOperationException("This set is unmodifiable");
+        throw new UnsupportedOperationException(THIS_SET_IS_UNMODIFIABLE);
     }
 
     @Override
     public void clear() {
-        throw new UnsupportedOperationException("This set is unmodifiable");
-    }
-
-    @Nonnull
-    @Override
-    public OrderedIndexedSet<E> reversed() {
-        return new UnmodifiableOrderedIndexedSet<>(delegate.reversed());
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (null == o || getClass() != o.getClass()) return false;
-        return delegate.equals(o);
+        throw new UnsupportedOperationException(THIS_SET_IS_UNMODIFIABLE);
     }
 
     @Override
     public int hashCode() {
         return delegate.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (null == o || getClass() != o.getClass()) {
+            return false;
+        }
+        return delegate.equals(o);
     }
 
     @Override

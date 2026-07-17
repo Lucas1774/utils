@@ -4,6 +4,7 @@ import com.lucas.utils.Mapper;
 
 /**
  * Exception thrown when a key cannot be mapped to a value.
+ *
  * <p>This exception is intended for use only by {@link Mapper} implementations.
  */
 @SuppressWarnings("unused")

@@ -3,101 +3,47 @@ package com.lucas.utils.ratelimiter;
 import com.lucas.utils.ratelimiter.exception.RateLimitTimeoutException;
 import jakarta.annotation.Nonnull;
 
-import java.time.Duration;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 
+/**
+ * A sliding window rate limiter.
+ *
+ * <p>{@link #call(Callable)} waits for permission before running the task,
+ * blocking the caller for as long as the implementation's policy requires.
+ * {@link #tryCall(Callable)} is the non-blocking counterpart: it runs the task
+ * immediately if permission is available, or returns without running it otherwise.
+ */
 @SuppressWarnings("unused")
-public final class SlidingWindowRateLimiter extends AbstractSlidingWindowRateLimiter {
-
-    public SlidingWindowRateLimiter(int maxRequests, @Nonnull Duration window) {
-        super(maxRequests, window);
-    }
-
-    public SlidingWindowRateLimiter(int maxRequests, @Nonnull Duration window, @Nonnull Duration timeout) {
-        super(maxRequests, window, timeout);
-    }
-
-    private synchronized void acquireOrThrow() throws RateLimitTimeoutException, InterruptedException {
-        long deadline = 0 < timeout ? System.nanoTime() + timeout : Long.MAX_VALUE;
-        while (true) {
-            long now = System.nanoTime();
-            if (now >= deadline) {
-                throw new RateLimitTimeoutException(RATE_LIMIT_TIMEOUT);
-            }
-            boolean removed = false;
-            while (!timestamps.isEmpty() && timestamps.peekFirst() <= now - windowNanos) {
-                timestamps.pollFirst();
-                removed = true;
-            }
-            if (removed) {
-                notifyAll();
-            }
-            if (timestamps.size() < maxRequests) {
-                timestamps.addLast(now);
-                return;
-            }
-            long waitTime =
-                    Math.min(Objects.requireNonNull(timestamps.peekFirst()) + windowNanos - now, deadline - now);
-            if (0 < waitTime) {
-                wait(waitTime / 1_000_000L, (int) (waitTime % 1_000_000L));
-            }
-        }
-    }
-
-    @Override
-    public <T> T call(@Nonnull Callable<T> task) throws Exception {
-        acquireOrThrow();
-        return task.call();
-    }
-
-    @Override
-    public <T> Optional<T> tryCall(@Nonnull Callable<T> task) throws Exception {
-        if (!tryAcquirePermission()) {
-            return Optional.empty();
-        }
-        return Optional.of(task.call());
-    }
+public interface SlidingWindowRateLimiter {
 
     /**
-     * Attempts to acquire permission, respecting rate limits.
+     * Executes a task after acquiring permission, respecting rate limits.
      *
-     * <p>If the current number of requests within the window is below the limit,
-     * permission is granted immediately. Otherwise, this method waits until
-     * a slot becomes available or the configured timeout elapses.
+     * <p>Blocks the caller until a slot becomes available or the configured
+     * timeout elapses.
      *
-     * @return {@code true} if permission was acquired; {@code false} if interrupted or the timeout expired.
+     * @param task the task to execute
+     * @param <T>  the return type of the task
+     * @return the result of the task
+     * @throws Exception                 if the task throws an exception
+     * @throws RateLimitTimeoutException if the timeout expired before permission
+     *                                   could be acquired
+     * @throws InterruptedException      if the calling thread is interrupted while
+     *                                   waiting for permission to be acquired
      */
-    public synchronized boolean acquirePermission() {
-        try {
-            acquireOrThrow();
-            return true;
-        } catch (RateLimitTimeoutException e) {
-            return false;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return false;
-        }
-    }
+    <T> T call(@Nonnull Callable<T> task) throws Exception;
 
     /**
-     * Attempts to acquire permission without waiting.
+     * Attempts to execute a task without waiting for permission.
      *
-     * <p>If the current number of requests within the window is below the limit,
-     * permission is granted immediately. Otherwise, returns {@code false}.
+     * <p>If permission is available immediately, the task is executed and its
+     * result returned. Otherwise, returns an empty Optional.
      *
-     * @return {@code true} if permission was acquired; {@code false} if no permit available
+     * @param task the task to execute
+     * @param <T>  the return type of the task
+     * @return an Optional containing the task result if executed, or empty if no permission available
+     * @throws Exception if the task throws an exception
      */
-    public synchronized boolean tryAcquirePermission() {
-        long now = System.nanoTime();
-        while (!timestamps.isEmpty() && timestamps.peekFirst() <= now - windowNanos) {
-            timestamps.pollFirst();
-        }
-        if (timestamps.size() < maxRequests) {
-            timestamps.addLast(now);
-            return true;
-        }
-        return false;
-    }
+    <T> Optional<T> tryCall(@Nonnull Callable<T> task) throws Exception;
 }

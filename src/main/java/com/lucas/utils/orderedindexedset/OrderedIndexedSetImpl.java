@@ -2,7 +2,16 @@ package com.lucas.utils.orderedindexedset;
 
 import jakarta.annotation.Nonnull;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.ConcurrentModificationException;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 public final class OrderedIndexedSetImpl<E> implements OrderedIndexedSet<E> {
 
@@ -14,7 +23,6 @@ public final class OrderedIndexedSetImpl<E> implements OrderedIndexedSet<E> {
         list = new ArrayList<>();
         map = new HashMap<>();
     }
-
 
     public OrderedIndexedSetImpl(Collection<? extends E> c) {
         this();
@@ -47,10 +55,21 @@ public final class OrderedIndexedSetImpl<E> implements OrderedIndexedSet<E> {
     @Nonnull
     @Override
     public OrderedIndexedSet<E> subList(int fromIndex, int toIndex) {
-        if (0 > fromIndex || toIndex > size() || fromIndex > toIndex)
+        if (0 > fromIndex || toIndex > size() || fromIndex > toIndex) {
             throw new IndexOutOfBoundsException("fromIndex=" + fromIndex + " toIndex=" + toIndex + " size=" + size());
+        }
         OrderedIndexedSet<E> result = new OrderedIndexedSetImpl<>();
         for (int i = fromIndex; i < toIndex; i++) {
+            result.add(list.get(i));
+        }
+        return result;
+    }
+
+    @Nonnull
+    @Override
+    public OrderedIndexedSet<E> reversed() {
+        OrderedIndexedSet<E> result = new OrderedIndexedSetImpl<>();
+        for (int i = size() - 1; 0 <= i; i--) {
             result.add(list.get(i));
         }
         return result;
@@ -92,7 +111,9 @@ public final class OrderedIndexedSetImpl<E> implements OrderedIndexedSet<E> {
 
     @Override
     public boolean add(E e) {
-        if (map.containsKey(e)) return false;
+        if (map.containsKey(e)) {
+            return false;
+        }
         list.add(e);
         map.put(e, list.size() - 1);
         modCount++;
@@ -102,7 +123,9 @@ public final class OrderedIndexedSetImpl<E> implements OrderedIndexedSet<E> {
     @Override
     public boolean remove(Object o) {
         Integer idx = map.remove(o);
-        if (null == idx) return false;
+        if (null == idx) {
+            return false;
+        }
         list.remove(idx.intValue());
         for (int i = idx; i < list.size(); i++) {
             E elem = list.get(i);
@@ -115,7 +138,9 @@ public final class OrderedIndexedSetImpl<E> implements OrderedIndexedSet<E> {
     @Override
     public boolean containsAll(@Nonnull Collection<?> c) {
         for (Object o : c) {
-            if (!contains(o)) return false;
+            if (!contains(o)) {
+                return false;
+            }
         }
         return true;
     }
@@ -131,14 +156,15 @@ public final class OrderedIndexedSetImpl<E> implements OrderedIndexedSet<E> {
                 modified = true;
             }
         }
-        if (modified) modCount++;
+        if (modified) {
+            modCount++;
+        }
         return modified;
     }
 
     @Override
     public boolean retainAll(@Nonnull Collection<?> c) {
         Objects.requireNonNull(c);
-        int originalSize = list.size();
         ArrayList<E> newList = new ArrayList<>(list.size());
         map.clear();
         for (E e : list) {
@@ -147,17 +173,19 @@ public final class OrderedIndexedSetImpl<E> implements OrderedIndexedSet<E> {
                 newList.add(e);
             }
         }
+        int originalSize = list.size();
         list.clear();
         list.addAll(newList);
         boolean changed = list.size() != originalSize;
-        if (changed) modCount++;
+        if (changed) {
+            modCount++;
+        }
         return changed;
     }
 
     @Override
     public boolean removeAll(@Nonnull Collection<?> c) {
         Objects.requireNonNull(c);
-        int originalSize = list.size();
         ArrayList<E> newList = new ArrayList<>(list.size());
         map.clear();
         for (E e : list) {
@@ -166,10 +194,13 @@ public final class OrderedIndexedSetImpl<E> implements OrderedIndexedSet<E> {
                 newList.add(e);
             }
         }
+        int originalSize = list.size();
         list.clear();
         list.addAll(newList);
         boolean changed = list.size() != originalSize;
-        if (changed) modCount++;
+        if (changed) {
+            modCount++;
+        }
         return changed;
     }
 
@@ -180,29 +211,27 @@ public final class OrderedIndexedSetImpl<E> implements OrderedIndexedSet<E> {
         modCount++;
     }
 
-    @Nonnull
     @Override
-    public OrderedIndexedSet<E> reversed() {
-        OrderedIndexedSet<E> result = new OrderedIndexedSetImpl<>();
-        for (int i = size() - 1; 0 <= i; i--) {
-            result.add(list.get(i));
+    public int hashCode() {
+        int h = 0;
+        for (E e : map.keySet()) {
+            h += (null == e ? 0 : e.hashCode());
         }
-        return result;
+        return h;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Set<?> other)) return false;
-        if (other.size() != size()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof Set<?> other)) {
+            return false;
+        }
+        if (other.size() != size()) {
+            return false;
+        }
         return map.keySet().equals(other);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = 0;
-        for (E e : map.keySet()) h += (null == e ? 0 : e.hashCode());
-        return h;
     }
 
     @Override
@@ -215,10 +244,6 @@ public final class OrderedIndexedSetImpl<E> implements OrderedIndexedSet<E> {
         private final ListIterator<E> it = list.listIterator();
         private int expectedModCount = modCount;
         private E lastReturned = null;
-
-        private void checkForConcurrentModification() {
-            if (expectedModCount != modCount) throw new ConcurrentModificationException();
-        }
 
         @Override
         public boolean hasNext() {
@@ -248,6 +273,12 @@ public final class OrderedIndexedSetImpl<E> implements OrderedIndexedSet<E> {
             lastReturned = null;
             modCount++;
             expectedModCount++;
+        }
+
+        private void checkForConcurrentModification() {
+            if (expectedModCount != modCount) {
+                throw new ConcurrentModificationException();
+            }
         }
     }
 }
