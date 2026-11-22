@@ -10,6 +10,7 @@ import java.util.concurrent.Callable;
 @SuppressWarnings("unused")
 public final class CompletionSlidingWindowRateLimiter extends AbstractSlidingWindowRateLimiter {
 
+    private final ThreadLocal<Object> mostRecentPermit = new ThreadLocal<>();
     private int inFlight = 0;
 
     public CompletionSlidingWindowRateLimiter(int maxRequests, @Nonnull Duration window) {
@@ -38,6 +39,15 @@ public final class CompletionSlidingWindowRateLimiter extends AbstractSlidingWin
         return Optional.empty();
     }
 
+    @Override
+    public synchronized void refundPermission() {
+        Object permit = mostRecentPermit.get();
+        mostRecentPermit.remove();
+        if (null != permit && timestamps.removeIf(entry -> entry.permit() == permit)) {
+            notifyAll();
+        }
+    }
+
     private synchronized Permit acquirePermission() throws RateLimitTimeoutException, InterruptedException {
         long deadline = 0 < timeout ? System.nanoTime() + timeout : Long.MAX_VALUE;
         while (true) {
@@ -46,7 +56,7 @@ public final class CompletionSlidingWindowRateLimiter extends AbstractSlidingWin
                 throw new RateLimitTimeoutException(RATE_LIMIT_TIMEOUT);
             }
             boolean removed = false;
-            while (!timestamps.isEmpty() && timestamps.peekFirst() <= now - windowNanos) {
+            while (!timestamps.isEmpty() && timestamps.peekFirst().timestampNanos() <= now - windowNanos) {
                 timestamps.pollFirst();
                 removed = true;
             }
@@ -55,11 +65,15 @@ public final class CompletionSlidingWindowRateLimiter extends AbstractSlidingWin
             }
             if (inFlight + timestamps.size() < maxRequests) {
                 inFlight++;
-                return new Permit(this);
+                Object permit = new Object();
+                mostRecentPermit.set(permit);
+                return new Permit(this, permit);
             }
 
-            Long oldest = timestamps.peekFirst();
-            long waitTime = null == oldest ? deadline - now : Math.min((oldest + windowNanos) - now, deadline - now);
+            WindowEntry oldest = timestamps.peekFirst();
+            long waitTime = null == oldest
+                    ? deadline - now
+                    : Math.min((oldest.timestampNanos() + windowNanos) - now, deadline - now);
             if (0 < waitTime) {
                 wait(waitTime / 1_000_000L, (int) (waitTime % 1_000_000L));
             }
@@ -68,32 +82,28 @@ public final class CompletionSlidingWindowRateLimiter extends AbstractSlidingWin
 
     private synchronized Optional<Permit> tryAcquirePermission() {
         long now = System.nanoTime();
-        while (!timestamps.isEmpty() && timestamps.peekFirst() <= now - windowNanos) {
+        while (!timestamps.isEmpty() && timestamps.peekFirst().timestampNanos() <= now - windowNanos) {
             timestamps.pollFirst();
         }
         if (inFlight + timestamps.size() < maxRequests) {
             inFlight++;
-            return Optional.of(new Permit(this));
+            Object permit = new Object();
+            mostRecentPermit.set(permit);
+            return Optional.of(new Permit(this, permit));
         }
         return Optional.empty();
     }
 
-    private synchronized void releasePermission() {
+    private synchronized void releasePermission(Object permit) {
         inFlight--;
-        timestamps.addLast(System.nanoTime());
+        timestamps.addLast(new WindowEntry(permit, System.nanoTime()));
         notifyAll();
     }
 
-    static final class Permit implements AutoCloseable {
-        private final CompletionSlidingWindowRateLimiter limiter;
-
-        private Permit(CompletionSlidingWindowRateLimiter limiter) {
-            this.limiter = limiter;
-        }
-
+    private record Permit(CompletionSlidingWindowRateLimiter limiter, Object permit) implements AutoCloseable {
         @Override
         public void close() {
-            limiter.releasePermission();
+            limiter.releasePermission(permit);
         }
     }
 }

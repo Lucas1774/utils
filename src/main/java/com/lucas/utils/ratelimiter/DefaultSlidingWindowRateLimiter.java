@@ -11,6 +11,8 @@ import java.util.concurrent.Callable;
 @SuppressWarnings("unused")
 public final class DefaultSlidingWindowRateLimiter extends AbstractSlidingWindowRateLimiter {
 
+    private final ThreadLocal<Object> mostRecentPermit = new ThreadLocal<>();
+
     public DefaultSlidingWindowRateLimiter(int maxRequests, @Nonnull Duration window) {
         super(maxRequests, window);
     }
@@ -31,6 +33,15 @@ public final class DefaultSlidingWindowRateLimiter extends AbstractSlidingWindow
             return Optional.empty();
         }
         return Optional.of(task.call());
+    }
+
+    @Override
+    public synchronized void refundPermission() {
+        Object permit = mostRecentPermit.get();
+        mostRecentPermit.remove();
+        if (null != permit && timestamps.removeIf(entry -> entry.permit() == permit)) {
+            notifyAll();
+        }
     }
 
     /**
@@ -64,11 +75,13 @@ public final class DefaultSlidingWindowRateLimiter extends AbstractSlidingWindow
      */
     public synchronized boolean tryAcquirePermission() {
         long now = System.nanoTime();
-        while (!timestamps.isEmpty() && timestamps.peekFirst() <= now - windowNanos) {
+        while (!timestamps.isEmpty() && timestamps.peekFirst().timestampNanos() <= now - windowNanos) {
             timestamps.pollFirst();
         }
         if (timestamps.size() < maxRequests) {
-            timestamps.addLast(now);
+            Object permit = new Object();
+            timestamps.addLast(new WindowEntry(permit, now));
+            mostRecentPermit.set(permit);
             return true;
         }
         return false;
@@ -82,7 +95,7 @@ public final class DefaultSlidingWindowRateLimiter extends AbstractSlidingWindow
                 throw new RateLimitTimeoutException(RATE_LIMIT_TIMEOUT);
             }
             boolean removed = false;
-            while (!timestamps.isEmpty() && timestamps.peekFirst() <= now - windowNanos) {
+            while (!timestamps.isEmpty() && timestamps.peekFirst().timestampNanos() <= now - windowNanos) {
                 timestamps.pollFirst();
                 removed = true;
             }
@@ -90,11 +103,14 @@ public final class DefaultSlidingWindowRateLimiter extends AbstractSlidingWindow
                 notifyAll();
             }
             if (timestamps.size() < maxRequests) {
-                timestamps.addLast(now);
+                Object permit = new Object();
+                timestamps.addLast(new WindowEntry(permit, now));
+                mostRecentPermit.set(permit);
                 return;
             }
             long waitTime =
-                    Math.min(Objects.requireNonNull(timestamps.peekFirst()) + windowNanos - now, deadline - now);
+                    Math.min(Objects.requireNonNull(timestamps.peekFirst()).timestampNanos() + windowNanos - now,
+                            deadline - now);
             if (0 < waitTime) {
                 wait(waitTime / 1_000_000L, (int) (waitTime % 1_000_000L));
             }

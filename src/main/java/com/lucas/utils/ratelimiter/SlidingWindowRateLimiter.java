@@ -15,7 +15,7 @@ import java.util.concurrent.Callable;
  * immediately if permission is available, or returns without running it otherwise.
  */
 @SuppressWarnings("unused")
-public interface SlidingWindowRateLimiter {
+public sealed interface SlidingWindowRateLimiter permits AbstractSlidingWindowRateLimiter {
 
     /**
      * Executes a task after acquiring permission, respecting rate limits.
@@ -46,4 +46,14 @@ public interface SlidingWindowRateLimiter {
      * @throws Exception if the task throws an exception
      */
     <T> Optional<T> tryCall(@Nonnull Callable<T> task) throws Exception;
+
+    /**
+     * Refunds the most recent permit acquired by this rate limiter on the current thread.
+     *
+     * <p>Useful when a call failed due to a server-side transient error (e.g. HTTP 503)
+     * where the provider did not consume quota. Call this on the same thread that acquired
+     * the permit, after the corresponding {@link #call(Callable)} or {@link #tryCall(Callable)}
+     * returns and before acquiring another permit on that thread.
+     */
+    void refundPermission();
 }
